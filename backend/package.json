@@ -34,6 +34,7 @@
     "cache-manager": "^7.2.9",
     "dotenv": "^17.4.2",
     "ioredis": "^6.0.0",
+    "media-downloader-ez": "^2.2.0",
     "nestjs-telegraf": "^2.9.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",

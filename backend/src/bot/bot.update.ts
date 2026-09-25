@@ -35,6 +35,45 @@ export class BotUpdate {
     );
   }
 
+  @Command('stats')
+  async conStats(@Ctx() ctx: Context) {
+  const telegramId = ctx.from?.id
+  if(!telegramId){
+    return;
+  }
+  const user = await this.prisma.user.findUnique({
+    where:{
+      telegramId: String(telegramId),
+    }
+  });
+  if(!user){
+    return ctx.reply(`Пользователь не найден`)
+  }
+
+  const history = await this.prisma.requestHistory.count({
+    where: {
+      userId: user.id,
+    }
+  });
+
+  const platformGroup = await this.prisma.requestHistory.groupBy({
+    by: ['platform'],
+    where:{
+      userId:user.id
+    },
+    _count: {
+      platform:true
+    }
+  });
+  const platformStats = platformGroup
+    .map((item) => `${item.platform}: ${item._count.platform}`)
+    .join(`\n`);
+  await ctx.reply(
+    `📊 Ваша статистика\n\n` +
+    `📥 Всего скачано: ${history}\n\n` +
+    `По платформам:\n${platformStats || 'Нет скачиваний'}`,
+  );
+  }
   // Перехватываем любые текстовые сообщения (ссылки)
   @On('text')
   async onText(@Ctx() ctx: Context) {
@@ -45,7 +84,7 @@ export class BotUpdate {
     if (!('text' in ctx.message)) return;
     const text = ctx.message.text.trim();
     if(text.startsWith('/')) {
-      //тут будет хуйня какая нибудь
+      return;
     }
     // Базовая валидация: проверяем, что это хотя бы похоже на ссылку
     try {
@@ -113,45 +152,7 @@ export class BotUpdate {
     await this.cacheManager.del(cacheKey);
     await ctx.editMessageText(`✅ Принято! Качаю ${format === 'video' ? 'видео' : 'аудио'}...`);
   }
-  @Command('stats')
-  async conStats(@Ctx() ctx: Context) {
-  const telegramId = ctx.from?.id
-  if(!telegramId){
-    return;
-  }
-  const user = await this.prisma.user.findUnique({
-    where:{
-      telegramId: String(telegramId),
-    }
-  });
-  if(!user){
-    return ctx.reply(`Пользователь не найден`)
-  }
-
-  const history = await this.prisma.requestHistory.count({
-    where: {
-      userId: user.id,
-    }
-  });
-
-  const platformGroup = await this.prisma.requestHistory.groupBy({
-    by: ['platform'],
-    where:{
-      userId:user.id
-    },
-    _count: {
-      platform:true
-    }
-  });
-  const platformStats = platformGroup
-    .map((item) => `${item.platform}: ${item._count.platform}`)
-    .join(`\n`);
-  await ctx.reply(
-    `📊 Ваша статистика\n\n` +
-    `📥 Всего скачано: ${history}\n\n` +
-    `По платформам:\n${platformStats || 'Нет скачиваний'}`,
-  );
-  }
+  
 }
 
 interface ActionContext extends Context {

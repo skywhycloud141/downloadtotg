@@ -1,35 +1,91 @@
 import { Processor, WorkerHost } from '@nestjs/bullmq';
 import { Logger } from '@nestjs/common';
 import { Job } from 'bullmq';
-import { InjectBot } from 'nestjs-telegraf';
-import { Telegraf, Context } from 'telegraf';
+import * as fs from 'fs';
+import * as path from 'path';
 
-@Processor('download-queue')
+import downloadMedia from 'media-downloader-ez'; 
+import { PrismaService } from '../prisma/prisma.service';
+import { Telegraf } from 'telegraf';
+import { InjectBot } from 'nestjs-telegraf';
+
+interface MediaJobData {
+  url: string;
+  chatId: number;
+}
+
+@Processor('media-queue')
 export class MediaProcessor extends WorkerHost {
   private readonly logger = new Logger(MediaProcessor.name);
 
-  constructor(@InjectBot() private bot: Telegraf<Context>) {
+  constructor(
+    private readonly prisma: PrismaService,
+    @InjectBot() private readonly bot: Telegraf,
+  ) {
     super();
   }
 
-  async process(job: Job<{ url: string; chatId: number; platform: string }>) {
-    this.logger.log(`Начинаю обработку задачи: ${job.id}`);
-    const { url, chatId, platform } = job.data;
-
+  async process(job: Job<MediaJobData>): Promise<void> {
+    const { url, chatId } = job.data;
+    
+    let downloadedFileName: string | null = null; 
+    
     try {
-      await new Promise((resolve) => setTimeout(resolve, 3000));
-      this.logger.log(`Видео скачано: ${url}`);
+      this.logger.log(`Начало обработки. URL: ${url}`);
 
-      await this.bot.telegram.sendMessage(
-        chatId,
-        `✅ Твое видео с ${platform} готово!\n(Здесь будет сам файл)`,
-      );
+      // 1. ПРОВЕРКА КЭША
+     const cachedMedia = await this.prisma.mediaCache.findUnique({
+  where: { 
+    originalUrl_format: {
+      originalUrl: url,
+      format: 'video'
+    }
+  }
+});
+
+      if (cachedMedia) {
+        this.logger.log(`Найдено в кэше! Мгновенная отправка file_id: ${cachedMedia.telegramFileId}`);
+        await this.bot.telegram.sendVideo(chatId, cachedMedia.telegramFileId);
+        return;
+      }
+
+      this.logger.log('Качаю видео через media-downloader-ez...');
+      
+      downloadedFileName = await downloadMedia(url, { 
+        limitSizeMB: 45,
+        autocrop: true 
+      });
+
+      const filePath = path.resolve(process.cwd(), downloadedFileName);
+      this.logger.log(`Видео сохранено локально: ${filePath}`);
+
+      const sentMessage = await this.bot.telegram.sendVideo(chatId, { 
+        source: filePath
+      });
+
+      await this.prisma.mediaCache.create({
+        data: {
+          format:'video',
+          originalUrl: url,
+          telegramFileId: sentMessage.video.file_id, // Берем ID загруженного файла
+        }
+      });
+
+      this.logger.log(`Успех! Файл отправлен и закэширован.`);
+
     } catch (error) {
-      this.logger.error(`Ошибка при скачивании: ${error}`);
-      await this.bot.telegram.sendMessage(
-        chatId,
-        '❌ Произошла ошибка при скачивании видео. Попробуй позже.',
-      );
+      this.logger.error(`Ошибка при скачивании: ${error}`, error);
+      await this.bot.telegram.sendMessage(chatId, '❌ Произошла ошибка. Не удалось скачать это видео.');
+      throw error; 
+    } finally {
+      if (downloadedFileName) {
+        const filePath = path.resolve(process.cwd(), downloadedFileName);
+        
+        if (fs.existsSync(filePath)) {
+          fs.unlinkSync(filePath);
+          this.logger.log(`Мусор убран: Файл ${downloadedFileName} удален с сервера.`);
+        }
+      }
     }
   }
 }

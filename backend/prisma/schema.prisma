@@ -31,6 +31,8 @@ model User {
   firstName  String?
   createdAt  DateTime         @default(now())
   requests   RequestHistory[]
+  dailyDownloads Int      @default(0)
+  lastDownload   DateTime @default(now())
 }
 
 model RequestHistory {
@@ -41,4 +43,14 @@ model RequestHistory {
   createdAt DateTime      @default(now())
   userId    String
   user      User          @relation(fields: [userId], references: [id])
+}
+
+model MediaCache {
+  id             String   @id @default(uuid())
+  originalUrl    String
+  format         String   // Ожидаем 'video' или 'audio'
+  telegramFileId String
+  createdAt      DateTime @default(now())
+
+  @@unique([originalUrl, format])
 }
