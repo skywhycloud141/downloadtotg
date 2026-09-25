@@ -1,0 +1,44 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum Platform {
+  TIKTOK
+  REDDIT
+  INSTAGRAM
+  UNKNOWN
+}
+
+enum RequestStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+model User {
+  id         String           @id @default(uuid())
+  telegramId String           @unique
+  username   String?
+  firstName  String?
+  createdAt  DateTime         @default(now())
+  requests   RequestHistory[]
+}
+
+model RequestHistory {
+  id        String        @id @default(uuid())
+  url       String
+  platform  Platform      @default(UNKNOWN)
+  status    RequestStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  userId    String
+  user      User          @relation(fields: [userId], references: [id])
+}
