@@ -11,16 +11,17 @@ export class LinkValidatorService {
 
     try {
       hostname = new URL(url).hostname.toLowerCase();
+      console.log(hostname)
     } catch {
       return Platform.UNKNOWN;
     }
 
     switch (hostname) {
-      case 'tiktok.com':
+      case 'www.tiktok.com':
         return Platform.TIKTOK;
       case 'reddit.com':
         return Platform.REDDIT;
-      case 'instagram.com':
+      case 'www.instagram.com':
         return Platform.INSTAGRAM;
 
       default:

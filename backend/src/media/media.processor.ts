@@ -4,7 +4,7 @@ import { Job } from 'bullmq';
 import * as fs from 'fs';
 import * as path from 'path';
 
-import downloadMedia from 'media-downloader-ez'; 
+import downloadMedia from 'media-downloader-ez';
 import { PrismaService } from '../prisma/prisma.service';
 import { Telegraf } from 'telegraf';
 import { InjectBot } from 'nestjs-telegraf';
@@ -14,7 +14,7 @@ interface MediaJobData {
   chatId: number;
 }
 
-@Processor('media-queue')
+@Processor('download-queue')
 export class MediaProcessor extends WorkerHost {
   private readonly logger = new Logger(MediaProcessor.name);
 
@@ -24,11 +24,10 @@ export class MediaProcessor extends WorkerHost {
   ) {
     super();
   }
-
   async process(job: Job<MediaJobData>): Promise<void> {
     const { url, chatId } = job.data;
     
-    let downloadedFileName: string | null = null; 
+    let downloadedFileName: string | null = null;
     
     try {
       this.logger.log(`Начало обработки. URL: ${url}`);
@@ -53,12 +52,13 @@ export class MediaProcessor extends WorkerHost {
       
       downloadedFileName = await downloadMedia(url, { 
         limitSizeMB: 45,
-        autocrop: true 
+        autocrop: false 
       });
 
       const filePath = path.resolve(process.cwd(), downloadedFileName);
       this.logger.log(`Видео сохранено локально: ${filePath}`);
 
+      await this.bot.telegram.sendChatAction(chatId,'upload_video');
       const sentMessage = await this.bot.telegram.sendVideo(chatId, { 
         source: filePath
       });
