@@ -28,13 +28,13 @@ import { createKeyv } from '@keyv/redis';
     MediaModule,
     BullModule.forRoot({
       connection: {
-        host: 'localhost',
+        host: 'redis',
         port: 6379,
       },
     }),
     CacheModule.register({
       isGlobal: true,
-      stores: [createKeyv('redis://localhost:6379')],
+      stores: [createKeyv('redis://redis:6379')],
     }),
   ],
 })

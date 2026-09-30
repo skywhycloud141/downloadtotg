@@ -1,0 +1,16 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: my-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+  
+  bot:
+    build: ./backend
+    container_name: bot
+    restart: unless-stopped
+    depends_on:
+      - redis
+    ports:
+      - "3000:3000"

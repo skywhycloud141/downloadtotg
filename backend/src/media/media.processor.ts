@@ -52,7 +52,7 @@ export class MediaProcessor extends WorkerHost {
       
       downloadedFileName = await downloadMedia(url, { 
         limitSizeMB: 45,
-        autocrop: false 
+        autocrop: true 
       });
 
       const filePath = path.resolve(process.cwd(), downloadedFileName);
