@@ -23,6 +23,8 @@ export class LinkValidatorService {
         return Platform.REDDIT;
       case 'www.instagram.com':
         return Platform.INSTAGRAM;
+        case 'www.youtube.com':
+          return Platform.YOUTUBE;
 
       default:
         return 'UNSUPPORTED';

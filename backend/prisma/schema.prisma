@@ -15,6 +15,7 @@ enum Platform {
   TIKTOK
   REDDIT
   INSTAGRAM
+  YOUTUBE
   UNKNOWN
 }
 
