@@ -69,7 +69,7 @@ Create `backend/.env`:
 ```dotenv
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 DATABASE_URL=file:./dev.db
-PORT=3000
+
 ```
 
 Keep this file private and out of version control.
