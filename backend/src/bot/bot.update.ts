@@ -20,7 +20,7 @@ export class BotUpdate {
     private readonly cacheManager: Cache,
   ) {}
 
-  // Реакция на команду /start
+  // /start command
   @Start()
   async onStart(@Ctx() ctx: Context) {
     if (!ctx.from) {
@@ -36,7 +36,7 @@ export class BotUpdate {
     );
   }
 
-  // Статистика
+  // stats of downloaded videos
   @Command('stats')
   async conStats(@Ctx() ctx: Context) {
     const telegramId = ctx.from?.id;
@@ -82,7 +82,7 @@ export class BotUpdate {
     );
   }
 
-  // Раскрываем короткую ссылку
+  // Fix short links to full link
   private async expandUrl(url: string): Promise<string> {
     const response = await fetch(url, {
       redirect: 'follow',
@@ -91,7 +91,7 @@ export class BotUpdate {
     return response.url;
   }
 
-  // Перехватываем текстовые сообщения
+  // Reaction on all text except commands
   @On('text')
   async onText(@Ctx() ctx: Context) {
     if (!ctx.from || !ctx.message) {
@@ -118,7 +118,7 @@ export class BotUpdate {
     }
 
     // ========================================
-    // РАСКРЫВАЕМ КОРОТКУЮ ССЫЛКУ
+    //Open short link
     // ========================================
 
     let expandedUrl: string;
@@ -139,7 +139,7 @@ export class BotUpdate {
     console.log('Expanded URL:', expandedUrl);
 
     // ========================================
-    // ОПРЕДЕЛЯЕМ ПЛАТФОРМУ
+    // Inicialization Platfortm
     // ========================================
 
     const platform =
@@ -155,7 +155,7 @@ export class BotUpdate {
     }
 
     // ========================================
-    // СОХРАНЯЕМ URL В REDIS
+    // SAVE  URL  TO  REDIS
     // ========================================
 
     const cacheKey = `pending_url_${ctx.from.id}`;
@@ -167,7 +167,7 @@ export class BotUpdate {
     );
 
     // ========================================
-    // СОХРАНЯЕМ ЗАПРОС В БД
+    // SAVE REQUEST TO DB
     // ========================================
 
     const user = await this.userService.findOrCreateUser(
@@ -183,7 +183,7 @@ export class BotUpdate {
     });
 
     // ========================================
-    // СПРАШИВАЕМ ФОРМАТ
+    // ASK VIDEO/AUDIO
     // ========================================
 
     await ctx.reply(
@@ -201,12 +201,12 @@ export class BotUpdate {
     );
   }
 
-  // Обработка выбора формата
+  // format 
   @Action(/format_(video|audio)/)
   async onFormatSelection(
     @Ctx() ctx: ActionContext,
   ) {
-    // Отвечаем Telegram на callback
+    // answer Telegram on callback
     await ctx.answerCbQuery();
 
     const match = ctx.match;
@@ -219,7 +219,7 @@ export class BotUpdate {
 
     const cacheKey = `pending_url_${ctx.from.id}`;
 
-    // Получаем раскрытый URL из Redis
+    //  URL from Redis
     const url = await this.cacheManager.get<string>(
       cacheKey,
     );
@@ -236,17 +236,15 @@ export class BotUpdate {
     console.log('Download URL:', url);
     console.log('Format:', format);
 
-    // Передаём URL в MediaService
     await this.mediaService.addDownloadTask(
       url,
       ctx.chat.id,
       format,
     );
 
-    // Удаляем URL из Redis
     await this.cacheManager.del(cacheKey);
 
-    // Меняем сообщение
+
     await ctx.editMessageText(
       `✅ Принято! Качаю ${
         format === 'video' ? 'видео' : 'аудио'
