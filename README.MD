@@ -1,27 +1,70 @@
+<div align="center">
+
 # Telegram Media Downloader Bot
 
-A Telegram bot built with NestJS that accepts links to social media posts, asks whether to download video or audio, and queues media processing through Redis and BullMQ. It stores Telegram users and request history in SQLite and caches Telegram media file IDs for reuse.
+### Send a social media link to Telegram and get the video back in chat.
 
-## Features
+Built with NestJS, Telegraf, BullMQ, Redis, and Prisma.
 
-- Handles TikTok, Reddit, Instagram, and YouTube URLs (including TikTok's `vt.tiktok.com` short links).
-- Expands redirecting URLs before checking the host.
-- Offers video or audio as a format choice in Telegram.
-- Queues downloads with BullMQ and uses Redis for the queue and short-lived link cache.
-- Tracks users and request history with Prisma and SQLite.
-- Provides `/start` and `/stats` bot commands.
+![Node.js](https://img.shields.io/badge/Node.js-24-339933?logo=nodedotjs&logoColor=white)
+![NestJS](https://img.shields.io/badge/NestJS-12-E0234E?logo=nestjs&logoColor=white)
+![Queue](https://img.shields.io/badge/Queue-BullMQ-cc0000)
+![Database](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white)
 
-## Requirements
+</div>
 
-- Node.js 24 (the Docker image uses Node 24)
-- npm
+---
+
+## What it does
+
+Send a link from TikTok, Reddit, Instagram, or YouTube to the bot. The bot checks the URL, asks for a video or audio choice, and puts the request on a background queue. When processing finishes, the media is sent to the same Telegram chat.
+
+The bot also records users and submitted links in SQLite, keeps pending links in Redis, and caches Telegram video file IDs so a previously processed video can be sent again without downloading it.
+
+## How a request moves through the app
+
+```mermaid
+flowchart LR
+    A[Telegram user] -->|Sends link| B[Telegraf bot]
+    B --> C[Expand and validate URL]
+    C -->|Supported| D[Save request with Prisma]
+    D --> E[Choose video or audio]
+    E --> F[BullMQ queue]
+    F --> G[Media processor]
+    G --> H{Cached video?}
+    H -->|Yes| I[Send cached Telegram file]
+    H -->|No| J[Download media]
+    J --> K[Send to Telegram]
+    K --> L[Cache Telegram file ID]
+    M[(Redis)] -. pending link and queue .-> B
+    M -.-> F
+    N[(SQLite)] -. users and history .-> D
+    N -. media cache .-> L
+```
+
+## Supported platforms
+
+| Platform | Link handling |
+| --- | --- |
+| TikTok | Regular links and `vt.tiktok.com` short links |
+| Reddit | `reddit.com` links |
+| Instagram | `instagram.com` links |
+| YouTube | Recognized by the validator |
+
+The current bot reply lists TikTok, Reddit, and Instagram as supported. YouTube is recognized internally, but its end-to-end behavior has not been confirmed.
+
+## Quick start
+
+### Requirements
+
+- Node.js 24 and npm
+- Redis 7
 - A Telegram bot token from [@BotFather](https://t.me/BotFather)
-- Redis 7, reachable by the backend at `redis:6379` in Docker or at the configured host when running locally
 - FFmpeg for media processing (included in the Docker image)
 
-## Configuration
+### Configure the bot
 
-The backend loads environment variables through NestJS ConfigModule and dotenv. Create `backend/.env` with:
+Create `backend/.env`:
 
 ```dotenv
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
@@ -29,13 +72,30 @@ DATABASE_URL=file:./dev.db
 PORT=3000
 ```
 
-`DATABASE_URL` is required by Prisma. For local SQLite usage, `file:./dev.db` creates the database relative to the backend working directory. Do not commit your bot token or `.env` file.
+Keep this file private and out of version control.
 
-## Run locally
+### Run with Docker Compose
 
-Start Redis first. The current application configuration connects to the hostname `redis` on port `6379`; if Redis is running directly on your machine, update the Redis host in `backend/src/app.module.ts` to match your local setup.
+The application connects to Redis at `redis:6379`. Before starting Compose, pass the backend environment file to the `bot` service by adding this under `bot` in `docker-compose.yml`:
 
-Then, from the repository root:
+```yaml
+    env_file:
+      - ./backend/.env
+```
+
+Then start the services:
+
+```bash
+docker compose up --build
+```
+
+Compose starts Redis and the bot. The HTTP service listens on port `3000`; the bot receives messages through the Telegram Bot API. The current Compose setup does not persist the SQLite database across container replacement.
+
+### Run locally
+
+The backend currently uses the Redis hostname `redis` for both BullMQ and its link cache. Run Redis with that hostname reachable from your backend, or change the Redis host in `backend/src/app.module.ts` to match your local Redis instance.
+
+From the repository root:
 
 ```bash
 cd backend
@@ -45,51 +105,54 @@ npx prisma migrate deploy
 npm run start:dev
 ```
 
-The bot uses Telegram's bot API. Send `/start` to your bot, then send a supported link and choose a format. The NestJS HTTP endpoint listens on port `3000` by default and returns `Hello World!` at `/`.
+Message `/start` to your bot, then send a supported link and choose a format.
 
-## Run with Docker Compose
+## Bot commands
 
-Set `TELEGRAM_BOT_TOKEN` and `DATABASE_URL` in `backend/.env`, then run:
+| Command / message | What happens |
+| --- | --- |
+| `/start` | Creates or finds your user record and explains the link workflow |
+| `/stats` | Shows recorded requests, grouped by platform |
+| A supported URL | Validates and records the link, then offers format buttons |
 
-```bash
-docker compose up --build
-```
+## Architecture
 
-Compose starts Redis and builds the backend from `backend/Dockerfile`. The app container needs the environment variables above; the current Compose file does not pass `backend/.env` into the container, so add an `env_file: ./backend/.env` entry to the `bot` service before using Compose. Redis is exposed on host port `6379`, and the bot HTTP service on port `3000`.
-
-## Bot commands and behavior
-
-- `/start` creates or finds the Telegram user and introduces the link workflow.
-- `/stats` reports the number of recorded requests and a count grouped by platform.
-- Send a URL as a plain text message. The bot validates the host, records the request, and presents format buttons.
-
-## Development commands
-
-Run these from `backend/`:
-
-```bash
-npm run start:dev  # watch mode
-npm run build      # compile
-npm run lint       # lint source and tests
-npm test           # unit tests
-npm run test:e2e   # end-to-end tests
-```
+| Component | Responsibility |
+| --- | --- |
+| NestJS + Telegraf | Telegram commands, messages, and callback buttons |
+| Link validator | Resolves a URL host to a supported platform |
+| BullMQ + Redis | Queues download jobs and stores short-lived pending links |
+| Media processor | Downloads media, sends it to Telegram, and removes the temporary file |
+| Prisma + SQLite | Stores Telegram users, request history, and cached Telegram file IDs |
 
 ## Project layout
 
 ```text
 backend/
-  prisma/       SQLite schema and database migrations
-  src/bot/      Telegram commands, link handling, and format selection
-  src/media/    BullMQ download queue and media processor
-  src/user/     Telegram user persistence
-  src/link-validator/ URL host detection
-  src/prisma/   Prisma client setup
+|-- prisma/                 # SQLite schema and migrations
+`-- src/
+    |-- bot/                 # Telegram commands and link workflow
+    |-- link-validator/      # URL platform detection
+    |-- media/               # BullMQ queue and media processor
+    |-- prisma/              # Prisma client setup
+    `-- user/                # Telegram user persistence
+```
+
+## Development
+
+Run these commands from `backend/`:
+
+```bash
+npm run start:dev  # Start in watch mode
+npm run build      # Compile the application
+npm run lint       # Lint source and tests
+npm test           # Run unit tests
+npm run test:e2e   # Run end-to-end tests
 ```
 
 ## Current implementation notes
 
-- The link validator recognizes YouTube URLs, though the user-facing unsupported-site message currently lists only TikTok, Reddit, and Instagram.
-- The bot offers an audio choice, but the current queue processor downloads and sends video regardless of the selected format.
-- The request history is recorded when a supported link is submitted; the `/stats` count therefore represents recorded requests, not confirmed successful downloads.
-- For durable data in Docker, configure a persistent volume for the SQLite database. The provided Compose file currently defines no database volume.
+- The bot displays both video and audio options, but the current processor always downloads, sends, and caches video.
+- `/stats` counts submitted supported links, not successful downloads.
+- YouTube is detected by the link validator, but the user-facing unsupported-site message omits it.
+- Docker Compose currently has no SQLite volume, so database data may be lost when the bot container is replaced.
