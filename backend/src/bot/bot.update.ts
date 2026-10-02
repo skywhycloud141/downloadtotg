@@ -84,12 +84,23 @@ export class BotUpdate {
 
   // Fix short links to full link
   private async expandUrl(url: string): Promise<string> {
+  try {
     const response = await fetch(url, {
       redirect: 'follow',
     });
 
+    console.log('Original URL:', url);
+    console.log('Final URL:', response.url);
+    console.log('Status:', response.status);
+
     return response.url;
+  } catch (error) {
+    console.error('URL:', url);
+    console.error('Ошибка раскрытия URL:', error);
+
+    return url;
   }
+}
 
   // Reaction on all text except commands
   @On('text')
@@ -118,13 +129,15 @@ export class BotUpdate {
     }
 
     // ========================================
-    //Open short link
+    //  Open short link
     // ========================================
 
-    let expandedUrl: string;
+    let expandedUrl=text;
 
     try {
+      if(text.includes('tiktok.com')){
       expandedUrl = await this.expandUrl(text);
+      }
     } catch (error) {
       console.error('Ошибка раскрытия URL:', error);
 

@@ -14,3 +14,4 @@ services:
       - redis
     ports:
       - "3000:3000"
+    

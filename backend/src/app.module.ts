@@ -19,6 +19,12 @@ import { createKeyv } from '@keyv/redis';
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
         token: configService.getOrThrow<string>('TELEGRAM_BOT_TOKEN'),
+        launchOptions:{
+          webhook:{
+            domain:configService.getOrThrow<string>('WEBHOOK_DOMAIN'),
+            hookPath:'/telegraf/secret-webhook'
+          }
+        }
       }),
       inject: [ConfigService],
     }),
