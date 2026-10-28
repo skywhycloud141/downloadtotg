@@ -1,4 +1,3 @@
-<<<<<<< ours
 # Telegram Media Downloader Bot
 
 Telegram-бот на NestJS принимает ссылки на публикации с поддерживаемых платформ, ставит обработку медиа в очередь BullMQ и отправляет результат в чат.
@@ -88,6 +87,9 @@ PORT=3000
 ```powershell
 =======
 <div align="center">
+=======
+ <div align="center">
+>>>>>>> 30fcc2e67a234b7c72c4d34e10d0d2f43f4d2a9f
 
 # Telegram Media Downloader Bot
 
@@ -144,50 +146,59 @@ The current bot reply lists TikTok, Reddit, and Instagram as supported. YouTube 
 
 ## Quick start
 
-### Requirements
+### 1. Install Docker
 
-- Node.js 24 and npm
-- Redis 7
-- A Telegram bot token from [@BotFather](https://t.me/BotFather)
-- FFmpeg for media processing (included in the Docker image)
+Install [Docker Desktop](https://www.docker.com/products/docker-desktop/) for Windows or macOS.
 
-### Configure the bot
+For Linux, install [Docker Engine and Docker Compose](https://docs.docker.com/engine/install/).
 
-Create `backend/.env`:
+### 2. Download the project
+
+1. Open the [repository](https://github.com/skywhycloud141/downloadtotg).
+2. Click **Code → Download ZIP**.
+3. Extract the archive and open the project folder.
+
+### 3. Create a Telegram bot
+
+1. Open [@BotFather](https://t.me/BotFather) in Telegram.
+2. Send `/newbot` and follow the instructions.
+3. Copy the token provided by BotFather.
+
+### 4. Configure the environment
+
+Create a file named `.env` inside the `backend` directory:
 
 ```dotenv
 TELEGRAM_BOT_TOKEN=your-telegram-bot-token
 DATABASE_URL=file:./dev.db
-
 ```
 
-Keep this file private and out of version control.
+Replace `your-telegram-bot-token` with your actual token. Do not share this file or publish your token.
 
-### Run with Docker Compose
+### 5. Configure Docker Compose
 
-The application connects to Redis at `redis:6379`. Before starting Compose, pass the backend environment file to the `bot` service by adding this under `bot` in `docker-compose.yml`:
+Open `docker-compose.yml` in the project root.
+
+Under the `bot` service, add `env_file` at the same indentation level as `build`:
 
 ```yaml
     env_file:
       - ./backend/.env
 ```
 
-Then start the services:
+Save the file.
+
+### 6. Start the bot
+
+Open a terminal in the project root, where `docker-compose.yml` is located, and run:
 
 ```bash
-docker compose up --build
+docker compose up --build -d
 ```
 
-Compose starts Redis and the bot. The HTTP service listens on port `3000`; the bot receives messages through the Telegram Bot API. The current Compose setup does not persist the SQLite database across container replacement.
-
-### Run locally
-
-The backend currently uses the Redis hostname `redis` for both BullMQ and its link cache. Run Redis with that hostname reachable from your backend, or change the Redis host in `backend/src/app.module.ts` to match your local Redis instance.
-
-From the repository root:
+Check that the containers are running:
 
 ```bash
->>>>>>> theirs
 cd backend
 npm ci --legacy-peer-deps
 npx prisma generate
@@ -195,7 +206,6 @@ npx prisma migrate deploy
 npm run start:dev
 ```
 
-<<<<<<< ours
 Перед запуском убедитесь, что Redis доступен по адресу `redis:6379` либо настройте этот адрес в приложении. Nest слушает `PORT` или порт `3000`. Telegram webhook настраивается через `WEBHOOK_DOMAIN`; путь обработчика — `/telegraf/secret-webhook`.
 
 ## Docker Compose
@@ -244,6 +254,31 @@ npm run test:e2e
 `test:e2e` содержит стартовую проверку `GET /`, ожидающую `Hello World!`; этот маршрут сейчас не подключён в `AppModule`, поэтому тест и фактический HTTP-контракт расходятся.
 =======
 Message `/start` to your bot, then send a supported link and choose a format.
+=======
+docker compose ps
+```
+
+### 7. Test the bot
+
+Open your bot in Telegram and send:
+
+```text
+/start
+```
+
+Send a supported video link and follow the bot's instructions.
+
+If the bot does not respond, check its logs:
+
+```bash
+docker compose logs -f bot
+```
+
+To stop the bot:
+
+```bash
+docker compose down
+```
 
 ## Bot commands
 
@@ -294,4 +329,3 @@ npm run test:e2e   # Run end-to-end tests
 - `/stats` counts submitted supported links, not successful downloads.
 - YouTube is detected by the link validator, but the user-facing unsupported-site message omits it.
 - Docker Compose currently has no SQLite volume, so database data may be lost when the bot container is replaced.
->>>>>>> theirs
