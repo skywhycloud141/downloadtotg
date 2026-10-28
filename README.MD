@@ -84,12 +84,7 @@ PORT=3000
 
 Требуются Node.js 24, npm, Redis и доступный Telegram Bot API. Для обработки медиа нужен FFmpeg.
 
-```powershell
-=======
-<div align="center">
-=======
- <div align="center">
->>>>>>> 30fcc2e67a234b7c72c4d34e10d0d2f43f4d2a9f
+
 
 # Telegram Media Downloader Bot
 
@@ -102,9 +97,7 @@ Built with NestJS, Telegraf, BullMQ, Redis, and Prisma.
 ![Queue](https://img.shields.io/badge/Queue-BullMQ-cc0000)
 ![Database](https://img.shields.io/badge/Database-SQLite-003B57?logo=sqlite&logoColor=white)
 
-</div>
 
----
 
 ## What it does
 
