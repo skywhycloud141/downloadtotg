@@ -8,6 +8,7 @@ import downloadMedia from 'media-downloader-ez';
 import { PrismaService } from '../prisma/prisma.service';
 import { Telegraf } from 'telegraf';
 import { InjectBot } from 'nestjs-telegraf';
+import { json } from 'stream/consumers';
 
 interface MediaJobData {
   url: string;
@@ -47,10 +48,19 @@ export class MediaProcessor extends WorkerHost {
         await this.bot.telegram.sendVideo(chatId, cachedMedia.telegramFileId);
         return;
       }
-
+      let ytCookies = [];
+      const cookiesPath = path.resolve(process.cwd(), 'youtube-cookies.json');
+      if(fs.existsSync(cookiesPath)){
+        try {
+          ytCookies = JSON.parse(fs.readFileSync(cookiesPath, 'utf-8'));
+        } catch (error) {
+          this.logger.warn('Ошибка парсинга youtube-cookies.json');
+        }
+      }
       this.logger.log('Качаю видео через media-downloader-ez...');
       
       downloadedFileName = await downloadMedia(url, { 
+        YTBcookie:ytCookies,
         limitSizeMB: 45,
         autocrop: true 
       });

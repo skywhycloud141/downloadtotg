@@ -33,6 +33,7 @@ export class LinkValidatorService {
 
       case 'www.youtube.com':
       case 'youtube.com':
+      case 'youtu.be':
         return Platform.YOUTUBE;
 
       default:

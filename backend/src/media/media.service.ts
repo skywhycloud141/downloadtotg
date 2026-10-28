@@ -1,5 +1,6 @@
 import { InjectQueue } from '@nestjs/bullmq';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { Queue } from 'bullmq';
 
 @Injectable()
@@ -9,6 +10,7 @@ export class MediaService {
     url: string,
     chatId: number | undefined,
     platform: string,
+    
   ) {
     await this.mediaQueue.add('process-video', {
       url,
